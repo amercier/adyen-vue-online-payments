@@ -1,8 +1,9 @@
 const express = require("express");
+const cors = require("cors");
 const consola = require("consola");
 const dotenv = require("dotenv");
 const { v4: uuid } = require("uuid");
-const { hmacValidator } = require('@adyen/api-library');
+const { hmacValidator } = require("@adyen/api-library");
 const { Client, Config, CheckoutAPI } = require("@adyen/api-library");
 const { Nuxt, Builder } = require("nuxt");
 
@@ -12,6 +13,8 @@ const app = express();
 app.use(express.json());
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
+// Enable all CORS Requests
+app.use(cors());
 
 // Import and set Nuxt.js options
 const nuxtConfig = require("../nuxt.config.js");
@@ -19,7 +22,7 @@ nuxtConfig.dev = process.env.NODE_ENV !== "production";
 
 // Enables environment variables by parsing the .env file and assigning it to process.env
 dotenv.config({
-  path: "./.env"
+  path: "./.env",
 });
 
 // Adyen Node.js API library boilerplate (configuration, etc.)
@@ -33,7 +36,6 @@ const checkout = new CheckoutAPI(client);
 
 // Invoke /sessions endpoint
 app.post("/api/sessions", async (req, res) => {
-
   try {
     // unique ref for the transaction
     const orderRef = uuid();
@@ -43,7 +45,7 @@ app.post("/api/sessions", async (req, res) => {
       countryCode: "NL",
       merchantAccount: process.env.ADYEN_MERCHANT_ACCOUNT, // required
       reference: orderRef, // required: your Payment Reference
-      returnUrl: `http://localhost:8080/api/handleShopperRedirect?orderRef=${orderRef}` // set redirect URL required for some payment methods
+      returnUrl: `http://localhost:8080/api/handleShopperRedirect?orderRef=${orderRef}`, // set redirect URL required for some payment methods
     });
     res.json({ response, clientKey: process.env.ADYEN_CLIENT_KEY });
   } catch (err) {
@@ -92,35 +94,34 @@ app.all("/api/handleShopperRedirect", async (req, res) => {
 /* ################# WEBHOOK ###################### */
 
 app.post("/api/webhooks/notifications", async (req, res) => {
-
   // YOUR_HMAC_KEY from the Customer Area
   const hmacKey = process.env.ADYEN_HMAC_KEY;
-  const validator = new hmacValidator()
+  const validator = new hmacValidator();
   // Notification Request JSON
   const notificationRequest = req.body;
-  const notificationRequestItems = notificationRequest.notificationItems
+  const notificationRequestItems = notificationRequest.notificationItems;
 
   // Handling multiple notificationRequests
-  notificationRequestItems.forEach(function(notificationRequestItem) {
-
-    const notification = notificationRequestItem.NotificationRequestItem
+  notificationRequestItems.forEach(function (notificationRequestItem) {
+    const notification = notificationRequestItem.NotificationRequestItem;
 
     // Handle the notification
-    if( validator.validateHMAC(notification, hmacKey) ) {
+    if (validator.validateHMAC(notification, hmacKey)) {
       // Process the notification based on the eventCode
       const merchantReference = notification.merchantReference;
       const eventCode = notification.eventCode;
-      console.log('merchantReference:' + merchantReference + " eventCode:" + eventCode);
+      console.log(
+        "merchantReference:" + merchantReference + " eventCode:" + eventCode
+      );
     } else {
       // invalid hmac: do not send [accepted] response
       console.log("Invalid HMAC signature: " + notification);
-      res.status(401).send('Invalid HMAC signature');
+      res.status(401).send("Invalid HMAC signature");
     }
   });
 
-  res.send('[accepted]')
+  res.send("[accepted]");
 });
-
 
 /* ################# end WEBHOOK ###################### */
 
@@ -141,7 +142,7 @@ async function start() {
   app.listen(port, host);
   consola.ready({
     message: `Server listening on http://localhost:${port}`,
-    badge: true
+    badge: true,
   });
 }
 start();
