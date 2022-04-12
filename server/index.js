@@ -41,8 +41,11 @@ app.post("/api/sessions", async (req, res) => {
     const orderRef = uuid();
     // Ideally the data passed here should be computed based on business logic
     const response = await checkout.sessions({
-      amount: { currency: "EUR", value: 1000 }, // value is 10€ in minor units
-      countryCode: "NL",
+      amount: {
+        currency: req.query.currency,
+        value: parseInt(req.query.value, 10),
+      }, // value is 10€ in minor units
+      countryCode: req.query.countryCode,
       merchantAccount: process.env.ADYEN_MERCHANT_ACCOUNT, // required
       reference: orderRef, // required: your Payment Reference
       returnUrl: `http://localhost:8080/api/handleShopperRedirect?orderRef=${orderRef}`, // set redirect URL required for some payment methods
