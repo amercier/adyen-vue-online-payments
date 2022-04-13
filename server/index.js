@@ -6,6 +6,7 @@ const { v4: uuid } = require("uuid");
 const { hmacValidator } = require("@adyen/api-library");
 const { Client, Config, CheckoutAPI } = require("@adyen/api-library");
 const { Nuxt, Builder } = require("nuxt");
+const fetch = require("node-fetch");
 
 // init app
 const app = express();
@@ -89,6 +90,56 @@ app.all("/api/handleShopperRedirect", async (req, res) => {
   } catch (err) {
     console.error(`Error: ${err.message}, error code: ${err.errorCode}`);
     res.redirect("/result/error");
+  }
+});
+
+// Invoke /payments endpoint
+app.post("/api/payments", async (req, res) => {
+  const paymentId = uuid();
+
+  try {
+    const response = await fetch(
+      "https://checkout-test.adyen.com/v68/payments",
+      {
+        method: "post",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-key": process.env.ADYEN_API_KEY,
+        },
+        body: JSON.stringify({
+          ...req.body,
+          returnUrl: `${req.get("origin")}/f2/payment-result/${paymentId}`,
+          merchantAccount: process.env.ADYEN_MERCHANT_ACCOUNT,
+          reference: paymentId,
+        }),
+      }
+    );
+
+    const json = await response.json();
+    console.log(json);
+
+    res.json({
+      paymentId,
+      ...(json.action?.type === "redirect"
+        ? {
+            redirectMethod: json.action.method,
+            redirectLink: {
+              type: "external",
+              href: json.action.url,
+            },
+            redirectData: json.action.data,
+          }
+        : {
+            redirectMethod: "GET",
+            redirectLink: {
+              type: "internal",
+              name: "checkout_payment_result",
+              params: { paymentId },
+            },
+          }),
+    });
+  } catch (error) {
+    console.error(error);
   }
 });
 
