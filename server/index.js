@@ -120,8 +120,55 @@ app.post("/api/payments", async (req, res) => {
 
     res.json({
       paymentId,
-      ...(json.action?.type === "redirect"
+      ...(json.action
         ? {
+            redirectAction: json.action,
+            redirectMethod: json.action.method,
+            redirectLink: {
+              type: "external",
+              href: json.action.url,
+            },
+            redirectData: json.action.data,
+          }
+        : {
+            redirectMethod: "GET",
+            redirectLink: {
+              type: "internal",
+              name: "checkout_payment_result",
+              params: { paymentId },
+            },
+          }),
+    });
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+// Invoke /payments/details endpoint
+app.post("/api/payments-details", async (req, res) => {
+  try {
+    const { paymentId, ...body } = req.body;
+
+    const response = await fetch(
+      "https://checkout-test.adyen.com/v68/payments/details",
+      {
+        method: "post",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-key": process.env.ADYEN_API_KEY,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const json = await response.json();
+    console.log(json);
+
+    res.json({
+      paymentId,
+      ...(json.action
+        ? {
+            redirectAction: json.action,
             redirectMethod: json.action.method,
             redirectLink: {
               type: "external",
