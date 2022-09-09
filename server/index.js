@@ -35,6 +35,33 @@ const checkout = new CheckoutAPI(client);
 
 /* ################# API ENDPOINTS ###################### */
 
+app.post("/api/payment-methods", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://checkout-test.adyen.com/v68/paymentMethods",
+      {
+        method: "post",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-key": process.env.ADYEN_API_KEY,
+        },
+        body: JSON.stringify({
+          merchantAccount: process.env.ADYEN_MERCHANT_ACCOUNT,
+          shopperLocale: req.body.shopperLocale,
+          countryCode: "BE",
+        }),
+      }
+    );
+
+    const json = await response.json();
+    console.log(json);
+
+    res.json(json);
+  } catch (error) {
+    console.error(error);
+  }
+});
+
 // Invoke /sessions endpoint
 app.post("/api/sessions", async (req, res) => {
   try {
